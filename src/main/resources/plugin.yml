@@ -1,0 +1,7 @@
+name: SimpleHUD
+version: 1.0
+main: local.simplehud.SimpleHUDPlugin
+api-version: 1.20
+author: YourName
+description: Player HUD display with stats
+softdepend: [LuckPerms, SimpleFactions, Vault]

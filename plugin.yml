@@ -1,0 +1,6 @@
+name: SimpleHUD
+version: 1.0
+api-version: '1.13'
+main: local.simplehud.SimpleHUDPlugin
+description: Player stats HUD display
+authors: [Dev]
