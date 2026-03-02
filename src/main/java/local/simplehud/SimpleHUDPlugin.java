@@ -19,7 +19,7 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         hudManager = new HUDManager(this);
-        
+
         // Register events
         Bukkit.getPluginManager().registerEvents(this, this);
         
