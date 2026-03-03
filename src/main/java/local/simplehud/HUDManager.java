@@ -165,13 +165,18 @@ public class HUDManager {
             var factionPlugin = Bukkit.getPluginManager().getPlugin("SimpleFactions");
             if (factionPlugin == null) return "§7No Faction";
             
-            // Get SimpleFactions plugin instance
-            var simpleFactions = (local.simplefactions.SimpleFactionsPlugin) factionPlugin;
-            var factionManager = simpleFactions.getFactionManager();
+            // Use reflection to get SimpleFactions plugin instance
+            var getFactionManagerMethod = factionPlugin.getClass().getMethod("getFactionManager");
+            var factionManager = getFactionManagerMethod.invoke(factionPlugin);
             
-            var faction = factionManager.getFaction(player.getUniqueId());
+            // Get faction for player
+            var getFactionMethod = factionManager.getClass().getMethod("getFaction", java.util.UUID.class);
+            var faction = getFactionMethod.invoke(factionManager, player.getUniqueId());
+            
             if (faction != null) {
-                return "§6" + faction.getName();
+                var getNameMethod = faction.getClass().getMethod("getName");
+                String factionName = (String) getNameMethod.invoke(faction);
+                return "§6" + factionName;
             }
         } catch (Exception e) {
             // Silently ignore

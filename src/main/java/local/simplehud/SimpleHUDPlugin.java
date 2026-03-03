@@ -46,12 +46,35 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        hudManager.createHUD(player);
+        // Don't create HUD immediately - wait to see which world they're in
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (!isHubWorld(player)) {
+                hudManager.createHUD(player);
+            }
+        }, 10L);
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         hudManager.removeHUD(player);
+    }
+
+    @EventHandler
+    public void onWorldChange(org.bukkit.event.player.PlayerChangedWorldEvent event) {
+        Player player = event.getPlayer();
+        
+        // If changing to hub, remove scoreboard; if leaving hub, create scoreboard
+        if (isHubWorld(player)) {
+            hudManager.removeHUD(player);
+            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+        } else {
+            hudManager.createHUD(player);
+        }
+    }
+
+    private boolean isHubWorld(Player player) {
+        String worldName = player.getWorld().getName();
+        return worldName.equalsIgnoreCase("hub");
     }
 }
