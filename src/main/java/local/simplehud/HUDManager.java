@@ -7,6 +7,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.ChatColor;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,6 +17,8 @@ import java.util.UUID;
  * Manages HUD display for players
  */
 public class HUDManager {
+
+    private static final String TAB_BRAND = "§d§l✦ §b§lＳＩＭＰＬＥ§f§lＦＡＣＴＩＯＮＳ §d§l✦";
 
     private final JavaPlugin plugin;
     private final Map<UUID, Scoreboard> playerScoreboards = new HashMap<>();
@@ -119,6 +122,74 @@ public class HUDManager {
         }
     }
 
+    public void updateTabForAll() {
+        int online = Bukkit.getOnlinePlayers().size();
+        for (Player viewer : Bukkit.getOnlinePlayers()) {
+            String viewerFaction = getFactionName(viewer);
+            if (viewerFaction == null || viewerFaction.isBlank()) {
+            viewerFaction = "No Faction";
+            }
+
+            String header = "\n" +
+                "§b§lTECHNOCLASH\n" +
+                TAB_BRAND + "\n" +
+                "§7Faction: §6" + viewerFaction + "\n" +
+                "§7Online Players: §f" + online + "\n";
+
+            String footer = "\n" +
+                "§f§lDISCORD §8| §f§lSTORE §8| §f§lHELP\n" +
+                "§7Need help? Ask a staff member\n" +
+                "§b/onlinestaff\n";
+
+            viewer.setPlayerListHeaderFooter(header, footer);
+        }
+
+        for (Player target : Bukkit.getOnlinePlayers()) {
+            target.setPlayerListName(formatTabName(target));
+        }
+    }
+
+    private String formatTabName(Player player) {
+        String factionName = getFactionName(player);
+        String rankColor = getTabRankColor(player);
+
+        if (factionName == null || factionName.isBlank()) {
+            return limitTabName(rankColor + player.getName());
+        }
+
+        String shortFaction = factionName.length() > 10 ? factionName.substring(0, 10) : factionName;
+        return limitTabName("§8[§6" + shortFaction + "§8] " + rankColor + player.getName());
+    }
+
+    private String getTabRankColor(Player player) {
+        try {
+            var luckPermsPlugin = Bukkit.getPluginManager().getPlugin("LuckPerms");
+            if (luckPermsPlugin == null) return "§f";
+
+            var luckPerms = net.luckperms.api.LuckPermsProvider.get();
+            var user = luckPerms.getUserManager().getUser(player.getUniqueId());
+            if (user == null) return "§f";
+
+            String rank = user.getPrimaryGroup().toLowerCase();
+            if (rank.contains("sovereign")) return "§c";
+            if (rank.contains("warlord")) return "§5";
+            if (rank.contains("tactician")) return "§6";
+            if (rank.contains("militant")) return "§e";
+            if (rank.contains("scout")) return "§a";
+        } catch (Exception ignored) {
+        }
+        return "§f";
+    }
+
+    private String limitTabName(String text) {
+        String stripped = ChatColor.stripColor(text);
+        if (stripped == null || stripped.length() <= 48) {
+            return text;
+        }
+        String truncatedPlain = stripped.substring(0, 48);
+        return "§f" + truncatedPlain;
+    }
+
     /**
      * Remove HUD for a player
      */
@@ -161,9 +232,17 @@ public class HUDManager {
      * Get faction text from SimpleFactions
      */
     private String getFactionText(Player player) {
+        String factionName = getFactionName(player);
+        if (factionName != null && !factionName.isBlank()) {
+            return "§6" + factionName;
+        }
+        return "§7No Faction";
+    }
+
+    private String getFactionName(Player player) {
         try {
             var factionPlugin = Bukkit.getPluginManager().getPlugin("SimpleFactions");
-            if (factionPlugin == null) return "§7No Faction";
+            if (factionPlugin == null) return null;
             
             // Use reflection to get SimpleFactions plugin instance
             var getFactionManagerMethod = factionPlugin.getClass().getMethod("getFactionManager");
@@ -175,13 +254,12 @@ public class HUDManager {
             
             if (faction != null) {
                 var getNameMethod = faction.getClass().getMethod("getName");
-                String factionName = (String) getNameMethod.invoke(faction);
-                return "§6" + factionName;
+                return (String) getNameMethod.invoke(faction);
             }
         } catch (Exception e) {
             // Silently ignore
         }
-        return "§7No Faction";
+        return null;
     }
 
     /**
