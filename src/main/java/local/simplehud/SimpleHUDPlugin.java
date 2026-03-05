@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -84,6 +85,8 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
         event.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
 
         Player player = event.getPlayer();
+        // Never show the HUD while in the hub world
+        if (isHubWorld(player)) return;
         hudManager.createHUD(player);
         hudManager.updateHUD(player);
     }
@@ -94,6 +97,16 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
                 && action != Action.LEFT_CLICK_AIR && action != Action.LEFT_CLICK_BLOCK) return false;
         ItemStack item = event.getItem();
         return item != null && item.getType() == Material.COMPASS;
+    }
+
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player victim = event.getEntity();
+        hudManager.recordDeath(victim);
+        Player killer = victim.getKiller();
+        if (killer != null && killer != victim) {
+            hudManager.recordKill(killer);
+        }
     }
 
     @EventHandler
@@ -110,7 +123,8 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
         // If changing to hub, remove scoreboard; if leaving hub, create scoreboard
         if (isHubWorld(player)) {
             hudManager.removeHUD(player);
-            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+            // Use a fresh blank scoreboard so no other plugin's objectives bleed through
+            player.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
         } else {
             hudManager.createHUD(player);
         }

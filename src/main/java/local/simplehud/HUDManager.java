@@ -21,9 +21,16 @@ public class HUDManager {
     private static final String TAB_BRAND = "§d§l✦ §b§lＳＩＭＰＬＥ§f§lＦＡＣＴＩＯＮＳ §d§l✦";
 
     private final JavaPlugin plugin;
-    private final Map<UUID, Scoreboard> playerScoreboards = new HashMap<>();
-    private final Map<UUID, PlayerStats> playerStats = new HashMap<>();
+    private final Map<UUID, Scoreboard>  playerScoreboards = new HashMap<>();
+    private final Map<UUID, PlayerStats> playerStats       = new HashMap<>();
     private net.milkbowl.vault.economy.Economy economy = null;
+
+    // ── Caches to avoid expensive reflection every second ─────────────────────
+    private final Map<UUID, String> factionCache   = new HashMap<>();
+    private final Map<UUID, String> rankCache      = new HashMap<>();
+    private final Map<UUID, Long>   cacheTimestamp = new HashMap<>();
+    /** Refresh rank/faction cache at most this often (ms). */
+    private static final long CACHE_TTL_MS = 5_000;
 
     public HUDManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -50,11 +57,11 @@ public class HUDManager {
             Scoreboard scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
             playerScoreboards.put(player.getUniqueId(), scoreboard);
             playerStats.put(player.getUniqueId(), new PlayerStats());
-            
-            // Create objective for right-side display with nice title
-            Objective objective = scoreboard.registerNewObjective("hud", "dummy", "§b══════════════");
+
+            Objective objective = scoreboard.registerNewObjective(
+                    "hud", "dummy", "§6§lTECHNOCLASH");
             objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-            
+
             player.setScoreboard(scoreboard);
         } catch (Exception e) {
             System.out.println("[SimpleHUD] Error creating HUD for " + player.getName() + ": " + e.getMessage());
@@ -62,61 +69,69 @@ public class HUDManager {
     }
 
     /**
-     * Update HUD for a player
+     * Update HUD for a player (called every 20 ticks).
+     * Expensive lookups (faction, rank) are cached for CACHE_TTL_MS.
      */
     public void updateHUD(Player player) {
         try {
             Scoreboard scoreboard = playerScoreboards.get(player.getUniqueId());
             if (scoreboard == null) return;
-            
+
             Objective objective = scoreboard.getObjective("hud");
             if (objective == null) return;
-            
-            // Clear existing scores
-            scoreboard.getEntries().forEach(scoreboard::resetScores);
-            
-            // Add stats with beautiful colors
-            int line = 13;
-            
-            // Header
-            objective.getScore("              ").setScore(line--);
-            
-            // Player name
-            objective.getScore("§b▸ §fPlayer").setScore(line--);
-            objective.getScore("  §e" + player.getName()).setScore(line--);
-            
-            // Rank (from LuckPerms)
-            String rankText = getRankText(player);
-            objective.getScore("§b▸ §fRank").setScore(line--);
-            objective.getScore("  " + rankText).setScore(line--);
-            
-            // Faction info
-            String factionText = getFactionText(player);
-            objective.getScore("§b▸ §fFaction").setScore(line--);
-            objective.getScore("  " + factionText).setScore(line--);
-            
-            // Balance
-            String balanceText = getBalanceText(player);
-            objective.getScore("§b▸ §fBalance").setScore(line--);
-            objective.getScore("  " + balanceText).setScore(line--);
-            
-            // XP Level
-            String xpText = getXPText(player);
-            objective.getScore("§b▸ §fExperience").setScore(line--);
-            objective.getScore("  " + xpText).setScore(line--);
-            
-            // K/D Ratio
-            PlayerStats stats = playerStats.get(player.getUniqueId());
-            if (stats != null) {
-                double kd = stats.getKD();
-                String kdColor = kd >= 2.0 ? "§a" : kd >= 1.0 ? "§e" : "§c";
-                objective.getScore("§b▸ §fK/D Ratio").setScore(line--);
-                objective.getScore("  " + kdColor + String.format("%.2f", kd)).setScore(line--);
+
+            // ── Refresh expensive caches if stale ──────────────────────────────
+            UUID uid = player.getUniqueId();
+            long now = System.currentTimeMillis();
+            if (now - cacheTimestamp.getOrDefault(uid, 0L) > CACHE_TTL_MS) {
+                factionCache.put(uid, getFactionText(player));
+                rankCache.put(uid, getRankText(player));
+                cacheTimestamp.put(uid, now);
             }
-            
-            // Footer
-            objective.getScore("              ").setScore(line);
-            
+            String factionText  = factionCache.getOrDefault(uid, "§7No Faction");
+            String rankText     = rankCache.getOrDefault(uid, "§7N/A");
+
+            // ── Cheap real-time values ─────────────────────────────────────────
+            String balanceText = getBalanceText(player);
+            String xpText      = getXPText(player);
+
+            PlayerStats stats = playerStats.get(uid);
+            int kills  = stats != null ? stats.getKills()  : 0;
+            int deaths = stats != null ? stats.getDeaths() : 0;
+            int net    = kills - deaths;
+            String netColor = net >= 0 ? "§a" : "§c";
+            String netSign  = net >= 0 ? "+" : "";
+
+            // ── Rebuild scoreboard ─────────────────────────────────────────────
+            scoreboard.getEntries().forEach(scoreboard::resetScores);
+
+            int line = 13;
+
+            // Separator 1 (16 bars)
+            objective.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line--);
+
+            // Player / Rank / Faction
+            objective.getScore("§e◆ §7Player  §f" + player.getName()).setScore(line--);
+            objective.getScore("§e◆ §7Rank    " + rankText).setScore(line--);
+            objective.getScore("§e◆ §7Faction " + factionText).setScore(line--);
+
+            // Separator 2 (15 bars — uniquely different length)
+            objective.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line--);
+
+            // Balance / XP
+            objective.getScore("§e◆ §7Balance " + balanceText).setScore(line--);
+            objective.getScore("§e◆ §7Level   " + xpText).setScore(line--);
+
+            // Separator 3 (14 bars)
+            objective.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line--);
+
+            // K/D Stats
+            objective.getScore("§e◆ §7Kills §a" + kills + " §7│ Deaths §c" + deaths).setScore(line--);
+            objective.getScore("§e◆ §7Score   " + netColor + netSign + net).setScore(line--);
+
+            // Separator 4 (13 bars)
+            objective.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line);
+
         } catch (Exception e) {
             System.out.println("[SimpleHUD] Error updating HUD: " + e.getMessage());
         }
@@ -210,8 +225,12 @@ public class HUDManager {
      * Remove HUD for a player
      */
     public void removeHUD(Player player) {
-        playerScoreboards.remove(player.getUniqueId());
-        playerStats.remove(player.getUniqueId());
+        UUID uid = player.getUniqueId();
+        playerScoreboards.remove(uid);
+        playerStats.remove(uid);
+        factionCache.remove(uid);
+        rankCache.remove(uid);
+        cacheTimestamp.remove(uid);
     }
 
     /**
