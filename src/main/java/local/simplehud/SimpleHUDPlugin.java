@@ -106,7 +106,7 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
     @EventHandler
     public void onWorldChange(org.bukkit.event.player.PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
-        
+
         // If changing to hub, remove scoreboard; if leaving hub, create scoreboard
         if (isHubWorld(player)) {
             hudManager.removeHUD(player);
@@ -114,6 +114,9 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
         } else {
             hudManager.createHUD(player);
         }
+
+        // Refresh tab immediately so faction tag appears/disappears right away
+        Bukkit.getScheduler().runTaskLater(this, hudManager::updateTabForAll, 1L);
     }
 
     private boolean isHubWorld(Player player) {

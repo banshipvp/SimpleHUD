@@ -125,16 +125,23 @@ public class HUDManager {
     public void updateTabForAll() {
         int online = Bukkit.getOnlinePlayers().size();
         for (Player viewer : Bukkit.getOnlinePlayers()) {
-            String viewerFaction = getFactionName(viewer);
-            if (viewerFaction == null || viewerFaction.isBlank()) {
-            viewerFaction = "No Faction";
+            String header;
+            if (isHubWorld(viewer)) {
+                header = "\n" +
+                    "§b§lTECHNOCLASH\n" +
+                    TAB_BRAND + "\n" +
+                    "§7Online Players: §f" + online + "\n";
+            } else {
+                String viewerFaction = getFactionName(viewer);
+                if (viewerFaction == null || viewerFaction.isBlank()) {
+                    viewerFaction = "No Faction";
+                }
+                header = "\n" +
+                    "§b§lTECHNOCLASH\n" +
+                    TAB_BRAND + "\n" +
+                    "§7Faction: §6" + viewerFaction + "\n" +
+                    "§7Online Players: §f" + online + "\n";
             }
-
-            String header = "\n" +
-                "§b§lTECHNOCLASH\n" +
-                TAB_BRAND + "\n" +
-                "§7Faction: §6" + viewerFaction + "\n" +
-                "§7Online Players: §f" + online + "\n";
 
             String footer = "\n" +
                 "§f§lDISCORD §8| §f§lSTORE §8| §f§lHELP\n" +
@@ -149,10 +156,19 @@ public class HUDManager {
         }
     }
 
+    private boolean isHubWorld(Player player) {
+        return player.getWorld().getName().equalsIgnoreCase("hub");
+    }
+
     private String formatTabName(Player player) {
-        String factionName = getFactionName(player);
         String rankColor = getTabRankColor(player);
 
+        // No faction tag shown for hub world players
+        if (isHubWorld(player)) {
+            return limitTabName(rankColor + player.getName());
+        }
+
+        String factionName = getFactionName(player);
         if (factionName == null || factionName.isBlank()) {
             return limitTabName(rankColor + player.getName());
         }
