@@ -18,7 +18,7 @@ import java.util.UUID;
  */
 public class HUDManager {
 
-    private static final String TAB_BRAND = "§d§l✦ §b§lＳＩＭＰＬＥ§f§lＦＡＣＴＩＯＮＳ §d§l✦";
+    private static final String TAB_BRAND = "§d§l✦ §b§lSimple Factions §d§l✦";
 
     private final JavaPlugin plugin;
     private final Map<UUID, Scoreboard>  playerScoreboards = new HashMap<>();
@@ -59,7 +59,7 @@ public class HUDManager {
             playerStats.put(player.getUniqueId(), new PlayerStats());
 
             Objective objective = scoreboard.registerNewObjective(
-                    "hud", "dummy", "§6§lTECHNOCLASH");
+                    "hud", "dummy", "§6§lSimple Factions");
             objective.setDisplaySlot(DisplaySlot.SIDEBAR);
 
             player.setScoreboard(scoreboard);
@@ -143,7 +143,7 @@ public class HUDManager {
             String header;
             if (isHubWorld(viewer)) {
                 header = "\n" +
-                    "§b§lTECHNOCLASH\n" +
+                    "§b§lSimple Factions\n" +
                     TAB_BRAND + "\n" +
                     "§7Online Players: §f" + online + "\n";
             } else {
@@ -152,7 +152,7 @@ public class HUDManager {
                     viewerFaction = "No Faction";
                 }
                 header = "\n" +
-                    "§b§lTECHNOCLASH\n" +
+                    "§b§lSimple Factions\n" +
                     TAB_BRAND + "\n" +
                     "§7Faction: §6" + viewerFaction + "\n" +
                     "§7Online Players: §f" + online + "\n";
@@ -202,6 +202,11 @@ public class HUDManager {
             if (user == null) return "§f";
 
             String rank = user.getPrimaryGroup().toLowerCase();
+            if (rank.contains("owner")) return "§5";
+            if (rank.contains("admin")) return "§4";
+            if (rank.contains("dev")) return "§1";
+            if (rank.contains("mod")) return "§b";
+            if (rank.contains("helper")) return "§d";
             if (rank.contains("sovereign")) return "§c";
             if (rank.contains("warlord")) return "§5";
             if (rank.contains("tactician")) return "§6";
@@ -249,6 +254,11 @@ public class HUDManager {
                 String rankLower = rank.toLowerCase();
                 
                 // Color code by rank
+                if (rankLower.contains("owner")) return "§5✦ Owner";
+                if (rankLower.contains("admin")) return "§4✦ Admin";
+                if (rankLower.contains("dev")) return "§1✦ Dev";
+                if (rankLower.contains("mod")) return "§b✦ Mod";
+                if (rankLower.contains("helper")) return "§d✦ Helper";
                 if (rankLower.contains("sovereign")) return "§c✦ Sovereign";
                 if (rankLower.contains("warlord")) return "§5✦ Warlord";
                 if (rankLower.contains("tactician")) return "§6✦ Tactician";
