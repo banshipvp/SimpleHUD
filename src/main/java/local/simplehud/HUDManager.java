@@ -21,6 +21,7 @@ public class HUDManager {
     private static final String TAB_BRAND = "§d§l✦ §b§lSimple Factions §d§l✦";
 
     private final JavaPlugin plugin;
+    private final ServerStatusManager serverStatus;
     private final Map<UUID, Scoreboard>  playerScoreboards = new HashMap<>();
     private final Map<UUID, PlayerStats> playerStats       = new HashMap<>();
     private net.milkbowl.vault.economy.Economy economy = null;
@@ -32,8 +33,9 @@ public class HUDManager {
     /** Refresh rank/faction cache at most this often (ms). */
     private static final long CACHE_TTL_MS = 5_000;
 
-    public HUDManager(JavaPlugin plugin) {
-        this.plugin = plugin;
+    public HUDManager(JavaPlugin plugin, ServerStatusManager serverStatus) {
+        this.plugin       = plugin;
+        this.serverStatus = serverStatus;
         setupEconomy();
     }
 
@@ -105,7 +107,10 @@ public class HUDManager {
             // ── Rebuild scoreboard ─────────────────────────────────────────────
             scoreboard.getEntries().forEach(scoreboard::resetScores);
 
-            int line = 13;
+            int line = 14;
+
+            // Server status — top line
+            objective.getScore("§e◆ §7Server  " + serverStatus.getStatusDisplay()).setScore(line--);
 
             // Separator 1 (16 bars)
             objective.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line--);
@@ -143,7 +148,6 @@ public class HUDManager {
             String header;
             if (isHubWorld(viewer)) {
                 header = "\n" +
-                    "§b§lSimple Factions\n" +
                     TAB_BRAND + "\n" +
                     "§7Online Players: §f" + online + "\n";
             } else {
@@ -152,7 +156,6 @@ public class HUDManager {
                     viewerFaction = "No Faction";
                 }
                 header = "\n" +
-                    "§b§lSimple Factions\n" +
                     TAB_BRAND + "\n" +
                     "§7Faction: §6" + viewerFaction + "\n" +
                     "§7Online Players: §f" + online + "\n";

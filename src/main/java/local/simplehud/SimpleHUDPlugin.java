@@ -2,6 +2,8 @@ package local.simplehud;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -10,6 +12,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -21,10 +24,12 @@ import org.bukkit.scoreboard.Scoreboard;
 public class SimpleHUDPlugin extends JavaPlugin implements Listener {
 
     private HUDManager hudManager;
+    private ServerStatusManager serverStatus;
 
     @Override
     public void onEnable() {
-        hudManager = new HUDManager(this);
+        serverStatus = new ServerStatusManager();
+        hudManager = new HUDManager(this, serverStatus);
 
         // Register events
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -47,6 +52,63 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
         }, 0, 20L); // Update every 20 ticks (1 second)
         
         getLogger().info("SimpleHUD enabled successfully!");
+    }
+
+    // ── /server <open|close> ────────────────────────────────────────────
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!command.getName().equalsIgnoreCase("server")) return false;
+
+        if (!sender.hasPermission("simplehud.admin")) {
+            sender.sendMessage("§cYou do not have permission to use this command.");
+            return true;
+        }
+
+        if (args.length == 0) {
+            sender.sendMessage("§6Usage: §f/server <open|close>");
+            sender.sendMessage("§7Current status: " + serverStatus.getStatusDisplay());
+            return true;
+        }
+
+        switch (args[0].toLowerCase()) {
+            case "close" -> {
+                if (!serverStatus.isOpen()) {
+                    sender.sendMessage("§cThe server is already closed.");
+                    return true;
+                }
+                serverStatus.setOpen(false);
+                Bukkit.broadcastMessage("§8[§cServer§8] §cThe server has been §l§cCLOSED§r§c. New players will be queued.");
+                getLogger().info(sender.getName() + " closed the server.");
+            }
+            case "open" -> {
+                if (serverStatus.isOpen()) {
+                    sender.sendMessage("§aThe server is already open.");
+                    return true;
+                }
+                serverStatus.setOpen(true);
+                Bukkit.broadcastMessage("§8[§aServer§8] §aThe server is now §l§aOPEN§r§a. Players may join freely.");
+                getLogger().info(sender.getName() + " opened the server.");
+            }
+            default -> sender.sendMessage("§6Usage: §f/server <open|close>");
+        }
+        return true;
+    }
+
+    // ── Block/queue joining players when server is closed ─────────────────
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPlayerLogin(PlayerLoginEvent event) {
+        if (serverStatus.isOpen()) return;
+        // Allow admins / staff through
+        if (event.getPlayer().hasPermission("simplehud.admin")) return;
+        // Op bypass
+        if (event.getPlayer().isOp()) return;
+
+        event.disallow(
+            PlayerLoginEvent.Result.KICK_OTHER,
+            "§7You are joining the queue for server §6Factions§7.\n"
+            + "§cThis server is currently closed.\n"
+            + "§7You will be let in once the server reopens."
+        );
     }
 
     @Override

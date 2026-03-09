@@ -5,3 +5,14 @@ api-version: 1.20
 author: YourName
 description: Player HUD display with stats
 softdepend: [LuckPerms, SimpleFactions, Vault]
+
+commands:
+  server:
+    description: Open or close the server to new players.
+    usage: /server <open|close>
+    permission: simplehud.admin
+
+permissions:
+  simplehud.admin:
+    description: Allows opening/closing the server and bypassing server-closed restrictions.
+    default: op

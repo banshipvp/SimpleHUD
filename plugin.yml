@@ -4,3 +4,14 @@ api-version: '1.13'
 main: local.simplehud.SimpleHUDPlugin
 description: Player stats HUD display
 authors: [Dev]
+
+commands:
+  server:
+    description: Open or close the server to new players.
+    usage: /server <open|close>
+    permission: simplehud.admin
+
+permissions:
+  simplehud.admin:
+    description: Allows opening/closing the server and bypassing server-closed restrictions.
+    default: op
