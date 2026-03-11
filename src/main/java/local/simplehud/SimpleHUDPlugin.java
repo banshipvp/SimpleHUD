@@ -34,18 +34,22 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
         // Register events
         Bukkit.getPluginManager().registerEvents(this, this);
         
-        // Create HUD for all currently online players (skip those in hub)
+        // Create HUD for all currently online players
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (!isHubWorld(player)) {
+            if (isHubWorld(player)) {
+                hudManager.createHubHUD(player);
+            } else {
                 hudManager.createHUD(player);
             }
         }
         
-        // Update HUD for all online players periodically (skip hub world)
+        // Update HUD for all online players periodically
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> {
             hudManager.updateTabForAll();
             for (Player player : Bukkit.getOnlinePlayers()) {
-                if (!isHubWorld(player)) {
+                if (isHubWorld(player)) {
+                    hudManager.updateHubHUD(player);
+                } else {
                     hudManager.updateHUD(player);
                 }
             }
@@ -121,7 +125,9 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
         Player player = event.getPlayer();
         // Don't create HUD immediately - wait to see which world they're in
         Bukkit.getScheduler().runTaskLater(this, () -> {
-            if (!isHubWorld(player)) {
+            if (isHubWorld(player)) {
+                hudManager.createHubHUD(player);
+            } else {
                 hudManager.createHUD(player);
             }
             hudManager.updateTabForAll();
@@ -182,12 +188,12 @@ public class SimpleHUDPlugin extends JavaPlugin implements Listener {
     public void onWorldChange(org.bukkit.event.player.PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
 
-        // If changing to hub, remove scoreboard; if leaving hub, create scoreboard
+        // If changing to hub, switch to hub scoreboard; if leaving hub, create factions scoreboard
         if (isHubWorld(player)) {
             hudManager.removeHUD(player);
-            // Use a fresh blank scoreboard so no other plugin's objectives bleed through
-            player.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+            hudManager.createHubHUD(player);
         } else {
+            hudManager.removeHUD(player);
             hudManager.createHUD(player);
         }
 

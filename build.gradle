@@ -18,6 +18,7 @@ dependencies {
     compileOnly 'net.luckperms:api:5.4'
     compileOnly 'com.github.MilkBowl:VaultAPI:1.7.1'
     compileOnly files('C:/Minecraft/FactionsServer/plugins/SimpleFactions.jar')
+    compileOnly fileTree(dir: '../SimpleFactionsRaiding/build/libs', include: '*.jar')
 }
 
 java {

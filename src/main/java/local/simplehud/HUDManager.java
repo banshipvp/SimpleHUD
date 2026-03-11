@@ -143,6 +143,77 @@ public class HUDManager {
         }
     }
 
+    // ── Hub-world scoreboard ───────────────────────────────────────────────────
+
+    /**
+     * Creates (or replaces) a hub-world sidebar scoreboard for {@code player}.
+     * Shows the Factions server status and live downtime.
+     */
+    public void createHubHUD(Player player) {
+        try {
+            Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
+            playerScoreboards.put(player.getUniqueId(), board);
+            Objective obj = board.registerNewObjective("hubhud", "dummy", "§6§lSimple Factions");
+            obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+            player.setScoreboard(board);
+        } catch (Exception e) {
+            System.out.println("[SimpleHUD] Error creating hub HUD: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Refreshes the hub-world sidebar for {@code player} (called every second).
+     */
+    public void updateHubHUD(Player player) {
+        try {
+            Scoreboard board = playerScoreboards.get(player.getUniqueId());
+            if (board == null) return;
+            Objective obj = board.getObjective("hubhud");
+            if (obj == null) return;
+
+            // Query Factions server status from SimpleFactionsRaiding at runtime
+            local.simplefactionsraiding.ServerStatusManager sfrStatus = getFactionServerStatus();
+
+            boolean closed     = sfrStatus != null && sfrStatus.isServerClosed();
+            boolean rebooting  = sfrStatus != null && sfrStatus.isRebooting();
+
+            String statusLine;
+            if (rebooting)     statusLine = "§c§lREBOOTING";
+            else if (closed)   statusLine = "§c§lCLOSED";
+            else               statusLine = "§a§lOPEN";
+
+            board.getEntries().forEach(board::resetScores);
+
+            int line = 9;
+            obj.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line--);
+            obj.getScore("§e◆ §7Factions Server").setScore(line--);
+            obj.getScore("§e◆ §7Status: " + statusLine).setScore(line--);
+
+            if (rebooting && sfrStatus != null) {
+                obj.getScore("§e◆ §7Downtime: " + sfrStatus.getDowntimeDisplay()).setScore(line--);
+            } else {
+                obj.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line--);
+            }
+
+            obj.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line--);
+            obj.getScore("§e◆ §7Players: §f" + Bukkit.getOnlinePlayers().size()).setScore(line--);
+            obj.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line);
+        } catch (Exception e) {
+            System.out.println("[SimpleHUD] Error updating hub HUD: " + e.getMessage());
+        }
+    }
+
+    /** Looks up the SimpleFactionsRaiding ServerStatusManager at runtime. Null-safe. */
+    private local.simplefactionsraiding.ServerStatusManager getFactionServerStatus() {
+        try {
+            org.bukkit.plugin.Plugin sfr = Bukkit.getPluginManager().getPlugin("SimpleFactionsRaiding");
+            if (sfr instanceof local.simplefactionsraiding.SimpleFactionsRaidingPlugin sfrPlugin) {
+                return sfrPlugin.getServerStatusManager();
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     public void updateTabForAll() {
         int online = Bukkit.getOnlinePlayers().size();
         for (Player viewer : Bukkit.getOnlinePlayers()) {
