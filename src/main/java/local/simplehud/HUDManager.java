@@ -86,55 +86,56 @@ public class HUDManager {
             UUID uid = player.getUniqueId();
             long now = System.currentTimeMillis();
             if (now - cacheTimestamp.getOrDefault(uid, 0L) > CACHE_TTL_MS) {
-                factionCache.put(uid, getFactionText(player));
+                factionCache.put(uid, getFactionName(player));
                 rankCache.put(uid, getRankText(player));
                 cacheTimestamp.put(uid, now);
             }
-            String factionText  = factionCache.getOrDefault(uid, "§7No Faction");
-            String rankText     = rankCache.getOrDefault(uid, "§7N/A");
+            String factionName = factionCache.getOrDefault(uid, null);
+            String rankText    = rankCache.getOrDefault(uid, "§7N/A");
+
+            // Update scoreboard title to faction name (or "No Faction")
+            String title = (factionName != null && !factionName.isBlank())
+                    ? "§6§l" + factionName : "§6§lNo Faction";
+            objective.setDisplayName(title);
 
             // ── Cheap real-time values ─────────────────────────────────────────
             String balanceText = getBalanceText(player);
-            String xpText      = getXPText(player);
+            int totalXP = player.getTotalExperience();
+            String xpText = "§b" + formatNumber(totalXP) + " XP";
 
             PlayerStats stats = playerStats.get(uid);
             int kills  = stats != null ? stats.getKills()  : 0;
             int deaths = stats != null ? stats.getDeaths() : 0;
-            int net    = kills - deaths;
-            String netColor = net >= 0 ? "§a" : "§c";
-            String netSign  = net >= 0 ? "+" : "";
+            double ratio = deaths == 0 ? kills : (double) kills / deaths;
+            String ratioStr = String.format("%.2f", ratio);
 
             // ── Rebuild scoreboard ─────────────────────────────────────────────
             scoreboard.getEntries().forEach(scoreboard::resetScores);
 
-            int line = 14;
+            int line = 11;
 
-            // Server status — top line
-            objective.getScore("§e◆ §7Server  " + serverStatus.getStatusDisplay()).setScore(line--);
-
-            // Separator 1 (16 bars)
+            // Separator 1
             objective.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line--);
 
-            // Player / Rank / Faction
+            // Player / Rank
             objective.getScore("§e◆ §7Player  §f" + player.getName()).setScore(line--);
             objective.getScore("§e◆ §7Rank    " + rankText).setScore(line--);
-            objective.getScore("§e◆ §7Faction " + factionText).setScore(line--);
 
-            // Separator 2 (15 bars — uniquely different length)
+            // Separator 2 (different length)
             objective.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line--);
 
             // Balance / XP
             objective.getScore("§e◆ §7Balance " + balanceText).setScore(line--);
-            objective.getScore("§e◆ §7Level   " + xpText).setScore(line--);
+            objective.getScore("§e◆ §7XP      " + xpText).setScore(line--);
 
-            // Separator 3 (14 bars)
+            // Separator 3
             objective.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line--);
 
-            // K/D Stats
-            objective.getScore("§e◆ §7Kills §a" + kills + " §7│ Deaths §c" + deaths).setScore(line--);
-            objective.getScore("§e◆ §7Score   " + netColor + netSign + net).setScore(line--);
+            // K/D in Cosmic style: K/D: ratio [Kills;Deaths]
+            objective.getScore("§e◆ §7K/D: §f" + ratioStr
+                    + " §8[§a" + kills + "§8;§c" + deaths + "§8]").setScore(line--);
 
-            // Separator 4 (13 bars)
+            // Separator 4
             objective.getScore("§8§m▬▬▬▬▬▬▬▬▬▬▬▬▬").setScore(line);
 
         } catch (Exception e) {
